@@ -94,9 +94,24 @@ fn day1_2(){
 fn change_vals2(mut s: String) -> String {
     let units = vec!["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
     let values = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-
-    for (unit, value) in units.iter().zip(values.iter()) {
-        s = s.replace(unit, value);
+    let mut running = true;
+    while running {
+        let mut index = 100000000;
+        let mut value = 10000;
+        for i in 0..units.len() {
+            let place = s.find(units[i]);
+            if let Some(p) = place {
+                if p <= index {
+                    index = p;
+                    value = i;
+                }
+            }
+        }
+        if value < 10 {
+            s = s.replacen(units[value], values[value], 1);
+        }else{
+            running = false
+        }
     }
     s.retain(|c| c.is_digit(10));
     s
