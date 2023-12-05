@@ -3,30 +3,54 @@ use std::fs;
 use std::ops::Index;
 
 fn main() {
-    // for v in parse_input(){
-    //     println!("{:?}",v);
-    // }
     println!("day 5 part 1: {}", day5_1());
     println!("day 5 part 2: {}", day5_2());
 }
 fn day5_2() -> u64{
     let parse = parse_input();
     let seeds = parse.index(0).index(0).clone();
-    let new_seeds = build_seed_range(seeds);
-    let only_maps = parse.into_iter().skip(1).collect();
-
-    calc_min_seed(new_seeds,only_maps)
-}
-
-fn build_seed_range(seed_range:Vec<u64>) -> Vec<u64>{
-    let mut new_seeds = HashSet::new();
-    for i in 0..(seed_range.len()/2){
-        for s in seed_range[2*i]..(seed_range[2*i]+seed_range[2*i+1]) {
-            new_seeds.push(s)
+    let mut new_vals = &mut vec![];
+    for i in 0..(seeds.len()/2){
+        new_vals.push((seeds[2*i], seeds[2*i]+seeds[2*i+1]-1));
+    }
+    let maps = parse.iter().skip(1);
+    let mut mapped_vals= vec![];
+    for map in maps{
+        mapped_vals = vec![];
+        while !new_vals.is_empty(){
+            let (mut b, mut e) = new_vals.pop().unwrap();
+            println!("\nbegin: {}, end {}\n",b,e);
+            for mapping in map{
+                let m = mapping.clone();
+                let start = mapping[1];
+                let end = start + mapping[2]-1;
+                println!("({}:{})",b,e);
+                if b >= start && e <= end{ //in between
+                    let mapped_range = (translate_seed(b,m.clone()).unwrap(),translate_seed(e,m).unwrap());
+                    mapped_vals.push(mapped_range);
+                    (b,e) = (0,0);
+                    break; // range has been consumed
+                }else if b >= start && b <= end && e > end { // spills out on right side
+                    let mapped_range = (translate_seed(b,m.clone()).unwrap(),translate_seed(end,m).unwrap());
+                    mapped_vals.push(mapped_range);
+                    (b,e) = (end+1,e);
+                }else if b < start && e <= end && e >= start{ // spills out on left side
+                    let mapped_range = (translate_seed(start,m.clone()).unwrap(),translate_seed(e,m).unwrap());
+                    mapped_vals.push(mapped_range);
+                    (b,e) = (b,start-1);
+                }
+            }
+            if b+e != 0{
+                mapped_vals.push((b,e));
+            }
+        }
+        for val in &mapped_vals{
+            new_vals.push(*val);
         }
     }
-    new_seeds.iter().collect::<Vec<u64>>()
+    mapped_vals.iter().map(|(a,_)|*a).min().unwrap()
 }
+
 fn day5_1() -> u64{
     let parse = parse_input();
     let seeds = parse.index(0).index(0).clone();
@@ -43,7 +67,7 @@ fn calc_min_seed(seeds: Vec<u64>, maps:Vec<Vec<Vec<u64>>>) -> u64{
             let map_val =
                 map.iter()
                     .filter_map(|onemap| {
-                        translate_seed(curr_value,onemap)
+                        translate_seed(curr_value,onemap.clone())
                     }).collect::<Vec<u64>>();
             if map_val.len() == 1 {
                 curr_value = *map_val.index(0);
@@ -53,10 +77,11 @@ fn calc_min_seed(seeds: Vec<u64>, maps:Vec<Vec<Vec<u64>>>) -> u64{
     }).min().unwrap()
 }
 
-fn translate_seed(curr_value:u64, trans: &Vec<u64>) -> Option<u64>{
+fn translate_seed(curr_value:u64, trans: Vec<u64>) -> Option<u64>{
     let source = 1;
     let dest = 0;
     let range = 2;
+    println!("val: {} in [{} ; {}]",curr_value,trans[source],trans[source]+trans[range]);
     if (trans[source]..(trans[source] + trans[range])).contains(&curr_value) {
         let offset = curr_value - trans[source];
         Some(trans[dest] + offset)
